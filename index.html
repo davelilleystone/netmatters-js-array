@@ -8,9 +8,19 @@
   </head>
   <body>
     <form class="search-form">
-      <input type="text" class="search-input" />
-      <button type="submit" class="search-button">Search</button>
+      <input type="text" class="search-input" id="search-input" aria-label="search input field" />
+      <button type="submit" class="search-button" aria-label="">Search Images</button>
+      <button type="button" class="save-button" id="save-button">Save Image</button>
     </form>
+    <form class="add-email-form">
+      <label for="add-email-input">Add Email</label>
+      <input type="email" class="add-email-input" id="add-email-input" />
+      <button type="submit" class="add-email-button">Add Email</button>
+    </form>
+    <label for="email-select">Select Email</label>
+    <select class="email-select" id="email-select">
+      <option value="default-option" selected disabled>No Email Addresses Available</option>
+    </select>
     <div class="photo-container"></div>
   </body>
 </html>
