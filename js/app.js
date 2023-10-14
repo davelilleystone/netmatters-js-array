@@ -1,8 +1,8 @@
 const apiUrl = "https://api.unsplash.com/photos/random/?count=1&orientation=landscape";
 const baseUrl = "https://unsplash.com/photos";
 let currentImageData = {};
-
-const photoContainer = document.querySelector(".photo-container");
+const savedImageContainer = document.querySelector(".saved-image-container");
+const mainImageContainer = document.querySelector(".main-image-container");
 const searchInput = document.querySelector(".search-input");
 const searchForm = document.querySelector(".search-form");
 const emailForm = document.querySelector(".add-email-form");
@@ -33,18 +33,23 @@ onPageLoadHandler = () => {
     emailAddresses.sort().forEach((email) => {
       addEmailToSelect(email);
     });
+
+    loadSavedImages();
   }
   // fire change event on select so we can show saved images for the first email in the list
-  fireSelectChangeEvent(emailSelect);
-  //   displayImage(apiUrl, photoContainer);
+  // fireSelectChangeEvent(emailSelect);
+  //   displayImage(apiUrl, mainImageContainer);
 };
 
 // save image to account and add to saved images container on page
 
 onSaveImageHandler = (e) => {
-  console.log("save image handler");
   if (!checkEmailOnSave(emailSelect)) {
     return console.log("No email selected");
+  }
+
+  if (!checkMainImageExists()) {
+    return console.log("No image to save");
   }
   const account = getAccountFromLocalStorage(getEmailFromSelect());
   const image = getCurrentImageData();
@@ -61,7 +66,7 @@ onSaveImageHandler = (e) => {
 
 // check if main image exists on page
 const checkMainImageExists = () => {
-  return photoContainer.querySelector(".main-image") ? true : false;
+  return mainImageContainer.querySelector(".main-image-container > .pic-wrapper") ? true : false;
 };
 
 // get the current image data - updates on each search
@@ -72,6 +77,45 @@ const getCurrentImageData = () => {
 // store the current image data
 const setCurrentImageData = (imageData) => {
   currentImageData = imageData;
+};
+
+const createImageDivWrapper = (image) => {
+  const div = document.createElement("div");
+  div.classList.add("pic-wrapper");
+  div.innerHTML = image;
+  return div;
+};
+
+const createSearchUrl = () => {
+  const searchTerm = searchInput.value.trim();
+  return (url = searchTerm != "" ? `${apiUrl}&query=${encodeURIComponent(searchTerm)}` : apiUrl);
+};
+
+// return current search term
+const getSearchTerm = () => {
+  return searchInput.value.trim();
+};
+
+// load saved images for selected email
+const loadSavedImages = () => {
+  const account = getAccountFromLocalStorage(getEmailFromSelect());
+  const parent = savedImageContainer;
+  const images = account.images;
+  if (images.length === 0) {
+    return;
+  }
+  images.forEach((image) => {
+    const imageElement = createImage(image, "saved");
+    const wrappedImage = createImageDivWrapper(imageElement);
+    addImageToDom(wrappedImage, parent);
+  });
+};
+
+// clear saved images container
+const clearSavedImages = () => {
+  if (savedImageContainer.hasChildNodes()) {
+    savedImageContainer.innerHTML = "";
+  }
 };
 
 /********************/
@@ -232,6 +276,18 @@ const getAccountsFromLocalStorage = () => {
   return accounts;
 };
 
+const saveImageToAccount = (account, image) => {
+  account.images.push(image);
+  updateAccountInLocalStorage(account);
+};
+
+const updateAccountInLocalStorage = (account) => {
+  const accounts = getAccountsFromLocalStorage();
+  const index = accounts.findIndex((acc) => acc.email === account.email);
+  accounts[index] = account;
+  localStorage.setItem("accounts", JSON.stringify(accounts));
+};
+
 /*
 Fetches JSON data from the given url - if the response is ok, 
 it returns the JSON data, otherwise it returns a rejected promise.
@@ -249,7 +305,6 @@ const getJson = async (url) => {
   }
   return await response.json();
 };
-0;
 
 const getImageData = async (url) => {
   try {
@@ -259,12 +314,17 @@ const getImageData = async (url) => {
   }
 };
 
-const createImage = (imageData) => {
-  const image = document.createElement("img");
-  image.src = imageData.urls.regular;
-  image.setAttribute("alt", imageData.alt_description);
-  image.setAttribute("data-photo-id", imageData.id);
-  image.classList.add("main-image");
+const createImage = (imageData, type) => {
+  const {
+    id,
+    alt_description: altDescription,
+    urls: { regular },
+    urls: { small },
+  } = imageData;
+  const image = `<picture>
+      ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
+      <img src="${small}" data-pic-id=${id} alt="${altDescription}">
+  </picture>`;
   return image;
 };
 
@@ -275,15 +335,27 @@ const addImageToDom = (image, parent) => {
 /* display the image on the page - only passing in zero or one argument for now 
 depending on if the user has entered a search term */
 
-const displayImage = async (url, parent) => {
+const onSearchSubmitHandler = async () => {
+  const parent = mainImageContainer;
+  const url = createSearchUrl();
+
+  // remove existing image from page
+  if (checkMainImageExists()) {
+    mainImageContainer.removeChild(mainImageContainer.firstChild);
+  }
+
   try {
     const [imageData] = await getImageData(url);
-    const image = createImage(imageData);
-    console.log(imageData);
-    addImageToDom(image, parent);
     setCurrentImageData(imageData);
+    const image = createImage(imageData, "new");
+    const wrappedImage = createImageDivWrapper(image);
+    addImageToDom(wrappedImage, parent);
   } catch (err) {
-    console.log(err);
+    if (err === 404) {
+      console.log(`No images for ${getSearchTerm()} found`);
+    } else {
+      console.log(err);
+    }
   }
 };
 
@@ -297,12 +369,8 @@ const displayImage = async (url, parent) => {
 
 searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  if (checkMainImageExists()) {
-    photoContainer.removeChild(photoContainer.firstChild);
-  }
-  const searchTerm = searchInput.value.trim();
-  const url = searchTerm != "" ? `${apiUrl}&query=${encodeURIComponent(searchTerm)}` : apiUrl;
-  displayImage(url, photoContainer);
+  onSearchSubmitHandler();
+
   //   searchInput.value = "";
 });
 
@@ -316,25 +384,16 @@ emailForm.addEventListener("submit", (e) => {
   e.preventDefault();
   const email = emailInput.value.trim();
   addEmail(email);
+  // TODO - clear input field only after email has been added successfully
   emailInput.value = "";
 });
 
 emailSelect.addEventListener("change", (e) => {
-  console.log("Show saved images for " + e.target.value);
+  // remove existing images from saved images container
+  clearSavedImages();
+  loadSavedImages();
 });
 
 window.addEventListener("DOMContentLoaded", () => {
   onPageLoadHandler();
 });
-
-const saveImageToAccount = (account, image) => {
-  account.images.push(image);
-  updateAccountInLocalStorage(account);
-};
-
-const updateAccountInLocalStorage = (account) => {
-  const accounts = getAccountsFromLocalStorage();
-  const index = accounts.findIndex((acc) => acc.email === account.email);
-  accounts[index] = account;
-  localStorage.setItem("accounts", JSON.stringify(accounts));
-};
