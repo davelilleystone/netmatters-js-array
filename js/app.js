@@ -58,6 +58,11 @@ onSaveImageHandler = (e) => {
     return console.log("Image already saved");
   }
   saveImageToAccount(account, image);
+  const savedImage = createSavedImage(currentImageData, ["pic-wrapper", "saved-image"]);
+  const overLay = createSavedItemOverlay();
+  const wrappedOverLay = createDivWrapper(overLay, ["saved-image-overlay"]);
+  savedImage.insertAdjacentElement("beforeend", wrappedOverLay);
+  addImageToDom(savedImage, savedImageContainer);
 };
 
 /********************/
@@ -79,10 +84,15 @@ const setCurrentImageData = (imageData) => {
   currentImageData = imageData;
 };
 
-const createImageDivWrapper = (image) => {
+const createSavedImage = (imageData, classList) => {
+  const image = createImage(imageData, "saved");
+  return createDivWrapper(image, classList);
+};
+
+const createDivWrapper = (element, classList) => {
   const div = document.createElement("div");
-  div.classList.add("pic-wrapper");
-  div.innerHTML = image;
+  div.classList.add(...classList);
+  div.innerHTML = element;
   return div;
 };
 
@@ -105,8 +115,7 @@ const loadSavedImages = () => {
     return;
   }
   images.forEach((image) => {
-    const imageElement = createImage(image, "saved");
-    const wrappedImage = createImageDivWrapper(imageElement);
+    const wrappedImage = createSavedImage(image, ["pic-wrapper", "saved-image"]);
     addImageToDom(wrappedImage, parent);
   });
 };
@@ -329,7 +338,7 @@ const createImage = (imageData, type) => {
 };
 
 const addImageToDom = (image, parent) => {
-  parent.appendChild(image);
+  parent.insertAdjacentElement("afterbegin", image);
 };
 
 /* display the image on the page - only passing in zero or one argument for now 
@@ -348,7 +357,7 @@ const onSearchSubmitHandler = async () => {
     const [imageData] = await getImageData(url);
     setCurrentImageData(imageData);
     const image = createImage(imageData, "new");
-    const wrappedImage = createImageDivWrapper(image);
+    const wrappedImage = createDivWrapper(image, ["pic-wrapper"]);
     addImageToDom(wrappedImage, parent);
   } catch (err) {
     if (err === 404) {
@@ -397,3 +406,18 @@ emailSelect.addEventListener("change", (e) => {
 window.addEventListener("DOMContentLoaded", () => {
   onPageLoadHandler();
 });
+
+savedImageContainer.addEventListener("click", (e) => {
+  console.dir(e.target);
+  if (e.target.classList.contains("pic-wrapper")) {
+    console.log("clicked");
+  }
+});
+
+createSavedItemOverlay = () => {
+  const overLay = `
+  <span class="view-on-unsplash">View on Unsplash</span>
+  <span class="remove-saved">Remove From Saved</span>
+  `;
+  return overLay;
+};
