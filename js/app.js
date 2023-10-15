@@ -1,5 +1,5 @@
 const apiUrl = "https://api.unsplash.com/photos/random/?count=1&orientation=landscape";
-const baseUrl = "https://unsplash.com/photos";
+const baseUrl = "https://unsplash.com/photos/";
 let currentImageData = {};
 const savedImageContainer = document.querySelector(".saved-image-container");
 const mainImageContainer = document.querySelector(".main-image-container");
@@ -17,7 +17,39 @@ emailForm.noValidate = true;
 /* Handler functions */
 /********************/
 
-// on page load handler
+// get image data from unsplash api and display on page
+
+const onSearchSubmitHandler = async () => {
+  const parent = mainImageContainer;
+  const url = createSearchUrl();
+
+  // remove existing image from page
+  if (checkMainImageExists()) {
+    mainImageContainer.removeChild(mainImageContainer.firstChild);
+  }
+
+  try {
+    const [imageData] = await getImageData(url);
+    setCurrentImageData(imageData);
+    const image = createImage(imageData, ["pic-wrapper"], "new");
+    addImageToDom(image, parent);
+  } catch (err) {
+    if (err === 404) {
+      console.log(`No images for ${getSearchTerm()} found`);
+    } else {
+      console.log(err);
+    }
+  }
+};
+
+// remove existing images from saved images container and load saved images for selected email
+
+onSelectChangeHandler = (e) => {
+  clearSavedImages();
+  loadSavedImages();
+};
+
+// on page load - check if accounts array exists in local storage, if not, create it. Adds any email addresses to select list and loads saved images for first email in list. Displays image in main image container.
 
 onPageLoadHandler = () => {
   // check if account array exists in local storage - if not, create it
@@ -58,16 +90,39 @@ onSaveImageHandler = (e) => {
     return console.log("Image already saved");
   }
   saveImageToAccount(account, image);
-  const savedImage = createSavedImage(currentImageData, ["pic-wrapper", "saved-image"]);
-  const overLay = createSavedItemOverlay();
-  const wrappedOverLay = createDivWrapper(overLay, ["saved-image-overlay"]);
-  savedImage.insertAdjacentElement("beforeend", wrappedOverLay);
+  const savedImage = createImage(currentImageData, ["pic-wrapper", "saved-image"], "saved");
   addImageToDom(savedImage, savedImageContainer);
+  onSearchSubmitHandler();
 };
 
 /********************/
 /* Helper functions */
 /********************/
+
+// create image html - type is either new or saved. New images are displayed in main image container, saved images are displayed in saved images container and are smaller in size.
+
+const createImageHtml = (imageData, type) => {
+  const {
+    id,
+    alt_description: altDescription,
+    urls: { regular },
+    urls: { small },
+    user: { name },
+    user: { username },
+  } = imageData;
+  const image = `<picture>
+      ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
+      <img src="${small}" data-pic-id=${id} alt="${altDescription}">
+  </picture>
+  <div class="attribution">Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a> on <a href="https://unsplash.com">Unsplash</a></div>`;
+  return image;
+};
+
+// add image to dom - parent is the container to add the image to
+
+const addImageToDom = (image, parent) => {
+  parent.insertAdjacentElement("afterbegin", image);
+};
 
 // check if main image exists on page
 const checkMainImageExists = () => {
@@ -84,15 +139,30 @@ const setCurrentImageData = (imageData) => {
   currentImageData = imageData;
 };
 
-const createSavedImage = (imageData, classList) => {
-  const image = createImage(imageData, "saved");
-  return createDivWrapper(image, classList);
+const createImage = (imageData, classList, imageType) => {
+  const image = createImageHtml(imageData, imageType);
+  const wrappedImage = createDivWrapper(image, classList);
+  const overLay = createImageOverlay(imageData.id, imageType);
+  wrappedImage.insertAdjacentElement("beforeend", overLay);
+  return wrappedImage;
 };
 
 const createDivWrapper = (element, classList) => {
   const div = document.createElement("div");
   div.classList.add(...classList);
   div.innerHTML = element;
+  return div;
+};
+
+createImageOverlay = (photoId, itemType) => {
+  const div = document.createElement("div");
+  div.classList.add("saved-image-overlay");
+  div.innerHTML = `<a class ="link-button button hidden" href="${baseUrl}${photoId}" target="_blank">View on Unsplash</a>
+  ${
+    itemType === "saved"
+      ? `<span class="remove-button button hidden" data-account="${getEmailFromSelect()}" data-photo-id=${photoId} } ">Remove Image</span>`
+      : ""
+  }`;
   return div;
 };
 
@@ -110,12 +180,12 @@ const getSearchTerm = () => {
 const loadSavedImages = () => {
   const account = getAccountFromLocalStorage(getEmailFromSelect());
   const parent = savedImageContainer;
-  const images = account.images;
-  if (images.length === 0) {
+  const imagesArray = account.images;
+  if (imagesArray.length === 0) {
     return;
   }
-  images.forEach((image) => {
-    const wrappedImage = createSavedImage(image, ["pic-wrapper", "saved-image"]);
+  imagesArray.forEach((image) => {
+    const wrappedImage = createImage(image, ["pic-wrapper", "saved-image"], "saved");
     addImageToDom(wrappedImage, parent);
   });
 };
@@ -297,10 +367,9 @@ const updateAccountInLocalStorage = (account) => {
   localStorage.setItem("accounts", JSON.stringify(accounts));
 };
 
-/*
-Fetches JSON data from the given url - if the response is ok, 
-it returns the JSON data, otherwise it returns a rejected promise.
-*/
+/*****************/
+/* APi Retrieval */
+/*****************/
 
 const getJson = async (url) => {
   const response = await fetch(url, {
@@ -323,58 +392,9 @@ const getImageData = async (url) => {
   }
 };
 
-const createImage = (imageData, type) => {
-  const {
-    id,
-    alt_description: altDescription,
-    urls: { regular },
-    urls: { small },
-  } = imageData;
-  const image = `<picture>
-      ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
-      <img src="${small}" data-pic-id=${id} alt="${altDescription}">
-  </picture>`;
-  return image;
-};
-
-const addImageToDom = (image, parent) => {
-  parent.insertAdjacentElement("afterbegin", image);
-};
-
-/* display the image on the page - only passing in zero or one argument for now 
-depending on if the user has entered a search term */
-
-const onSearchSubmitHandler = async () => {
-  const parent = mainImageContainer;
-  const url = createSearchUrl();
-
-  // remove existing image from page
-  if (checkMainImageExists()) {
-    mainImageContainer.removeChild(mainImageContainer.firstChild);
-  }
-
-  try {
-    const [imageData] = await getImageData(url);
-    setCurrentImageData(imageData);
-    const image = createImage(imageData, "new");
-    const wrappedImage = createDivWrapper(image, ["pic-wrapper"]);
-    addImageToDom(wrappedImage, parent);
-  } catch (err) {
-    if (err === 404) {
-      console.log(`No images for ${getSearchTerm()} found`);
-    } else {
-      console.log(err);
-    }
-  }
-};
-
-// add event listeners
-
-// display image on page load
-
-// window.addEventListener("DOMContentLoaded", displayImage);
-
-// display image on button click
+/*******************/
+/* Event Listeners */
+/*******************/
 
 searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
@@ -398,9 +418,7 @@ emailForm.addEventListener("submit", (e) => {
 });
 
 emailSelect.addEventListener("change", (e) => {
-  // remove existing images from saved images container
-  clearSavedImages();
-  loadSavedImages();
+  onSelectChangeHandler(e);
 });
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -413,11 +431,3 @@ savedImageContainer.addEventListener("click", (e) => {
     console.log("clicked");
   }
 });
-
-createSavedItemOverlay = () => {
-  const overLay = `
-  <span class="view-on-unsplash">View on Unsplash</span>
-  <span class="remove-saved">Remove From Saved</span>
-  `;
-  return overLay;
-};

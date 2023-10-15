@@ -36,7 +36,6 @@
   display: none;
 }
 .pic-wrapper.saved-image > .saved-image-overlay:hover {
-  cursor: pointer;
   background-color: rgba(0, 0, 0, 0.3);
 }
 .pic-wrapper.saved-image > .saved-image-overlay:hover span {
