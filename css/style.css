@@ -4,26 +4,22 @@
   box-sizing: border-box;
 }
 
-.saved-image-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+body {
+  font-family: "roboto", sans-serif;
+}
+
+a {
+  text-decoration: none;
 }
 
 .pic-wrapper.saved-image {
   position: relative;
 }
-.pic-wrapper.saved-image img {
-  padding: 20px;
-  border: 1px solid rgba(0, 0, 0, 0.3);
-}
 .pic-wrapper.saved-image > .saved-image-overlay {
   position: absolute;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-evenly;
   align-items: center;
   top: 0;
   left: 0;
@@ -35,16 +31,99 @@
 .pic-wrapper.saved-image > .saved-image-overlay span {
   display: none;
 }
+.pic-wrapper.saved-image > .saved-image-overlay a {
+  display: none;
+}
 .pic-wrapper.saved-image > .saved-image-overlay:hover {
   background-color: rgba(0, 0, 0, 0.3);
 }
-.pic-wrapper.saved-image > .saved-image-overlay:hover span {
-  display: block;
+.pic-wrapper.saved-image > .saved-image-overlay:hover span, .pic-wrapper.saved-image > .saved-image-overlay:hover a {
+  display: flex;
   color: white;
-  font-size: 1.5rem;
-  font-weight: bold;
+  font-size: 1rem;
   text-align: center;
   text-shadow: 0 0 5px black;
+}
+
+.toast {
+  display: inline-block;
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  padding: 0.8em 1em;
+  color: #fff;
+  background-color: #28a745;
+  border-color: #28a745;
+  opacity: 0;
+  border-radius: 3rem;
+  transition: opacity 500ms ease;
+}
+
+.image-viewer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.main-image-container img,
+.saved-image-container img {
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 3px;
+}
+
+.main-image-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  overflow: hidden;
+}
+
+.main-image-container {
+  height: 200px;
+  width: 100%;
+}
+
+.saved-image-wrapper {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.saved-image-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0 10px;
+  gap: 1rem;
+  width: 100%;
+  margin-top: 2rem;
+}
+
+@media screen and (min-width: 400px) {
+  .main-image-container {
+    width: 400px;
+    height: 300px;
+  }
+}
+@media screen and (min-width: 768px) {
+  .main-image-container {
+    width: 600px;
+    height: 400px;
+  }
+}
+@media screen and (min-width: 992px) {
+  .main-image-container {
+    width: 800px;
+    height: 600px;
+  }
 }
 
 /*# sourceMappingURL=style.css.map */

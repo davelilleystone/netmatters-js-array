@@ -4,26 +4,22 @@
   box-sizing: border-box;
 }
 
-.saved-image-container {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+body {
+  font-family: "roboto", sans-serif;
+}
+
+a {
+  text-decoration: none;
 }
 
 .pic-wrapper.saved-image {
   position: relative;
 
-  img {
-    padding: 20px;
-    border: 1px solid rgba(0, 0, 0, 0.3);
-  }
   & > .saved-image-overlay {
     position: absolute;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
     top: 0;
     left: 0;
@@ -36,18 +32,37 @@
       display: none;
     }
 
+    & a {
+      display: none;
+    }
+
     &:hover {
-      cursor: pointer;
       background-color: rgba(0, 0, 0, 0.3);
     }
 
-    &:hover span {
-      display: block;
+    &:hover span,
+    &:hover a {
+      display: flex;
       color: white;
-      font-size: 1.5rem;
-      font-weight: bold;
+      font-size: 1rem;
       text-align: center;
       text-shadow: 0 0 5px black;
     }
   }
+}
+
+.toast {
+  display: inline-block;
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  padding: 0.8em 1em;
+  color: #fff;
+  background-color: #28a745;
+  border-color: #28a745;
+  opacity: 0;
+  border-radius: 3rem;
+  transition: opacity 500ms ease;
 }

@@ -5,10 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="./js/app.js" defer></script>
     <link rel="stylesheet" href="./css/style.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=roboto&display=swap" rel="stylesheet" />
+
     <title>Image Generator</title>
   </head>
   <body>
-    <noscript>Sorry, your browser does not support JavaScript!</noscript>
+    <noscript></noscript>
     <form class="search-form">
       <input type="text" class="search-input" id="search-input" aria-label="search input field" />
       <button type="submit" class="search-button" aria-label="">Search Images</button>
@@ -23,7 +27,12 @@
     <select class="email-select" id="email-select">
       <option value="default-option" selected disabled>No Email Addresses Available</option>
     </select>
-    <div class="main-image-container"></div>
-    <div class="saved-image-container"></div>
+    <div class="image-viewer">
+      <div class="main-image-container"></div>
+      <div class="attribution"></div>
+    </div>
+    <div class="saved-image-wrapper">
+      <div class="saved-image-container"></div>
+    </div>
   </body>
 </html>

@@ -1,6 +1,9 @@
 const apiUrl = "https://api.unsplash.com/photos/random/?count=1&orientation=landscape";
 const baseUrl = "https://unsplash.com/photos/";
 let currentImageData = {};
+
+const msg = { imageSaved: "Your image has been saved", imageRemoved: "Your image has been removed" };
+const attribution = document.querySelector(".attribution");
 const savedImageContainer = document.querySelector(".saved-image-container");
 const mainImageContainer = document.querySelector(".main-image-container");
 const searchInput = document.querySelector(".search-input");
@@ -11,6 +14,7 @@ const emailSelect = document.querySelector(".email-select");
 
 // turn off browser validation for email input
 
+console.log();
 emailForm.noValidate = true;
 
 /********************/
@@ -33,6 +37,7 @@ const onSearchSubmitHandler = async () => {
     setCurrentImageData(imageData);
     const image = createImage(imageData, ["pic-wrapper"], "new");
     addImageToDom(image, parent);
+    addAttribution(currentImageData);
   } catch (err) {
     if (err === 404) {
       console.log(`No images for ${getSearchTerm()} found`);
@@ -77,6 +82,7 @@ onPageLoadHandler = () => {
 
 onSaveImageHandler = (e) => {
   if (!checkEmailOnSave(emailSelect)) {
+    // searchInput.setCustomValidity("No email selected");
     return console.log("No email selected");
   }
 
@@ -91,7 +97,13 @@ onSaveImageHandler = (e) => {
   }
   saveImageToAccount(account, image);
   const savedImage = createImage(currentImageData, ["pic-wrapper", "saved-image"], "saved");
-  addImageToDom(savedImage, savedImageContainer);
+  try {
+    addImageToDom(savedImage, savedImageContainer);
+    showToast(msg.imageSaved);
+  } catch (err) {
+    console.log(err);
+  }
+
   onSearchSubmitHandler();
 };
 
@@ -105,16 +117,19 @@ const createImageHtml = (imageData, type) => {
   const {
     id,
     alt_description: altDescription,
-    urls: { regular },
-    urls: { small },
-    user: { name },
-    user: { username },
+    urls: { raw },
   } = imageData;
+
+  const regular = raw + "&w=800&h=600&fit=crop";
+  const medium = raw + "&w=600&h=400&fit=crop";
+  const small = raw + "&w=400&h=300&fit=crop";
+  const xs = raw + "&w=300&h=200&fit=crop";
   const image = `<picture>
-      ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
-      <img src="${small}" data-pic-id=${id} alt="${altDescription}">
-  </picture>
-  <div class="attribution">Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a> on <a href="https://unsplash.com">Unsplash</a></div>`;
+  ${type === "new" ? `<source media="(min-width:992px)" srcset="${regular}">` : ""}
+  ${type === "new" ? `<source media="(min-width:768px)" srcset="${medium}">` : ""}
+  ${type === "new" ? `<source media="(min-width:400px)" srcset="${small}">` : ""}
+      <img src="${xs}" data-pic-id=${id} alt="${altDescription}">
+  </picture>`;
   return image;
 };
 
@@ -142,8 +157,10 @@ const setCurrentImageData = (imageData) => {
 const createImage = (imageData, classList, imageType) => {
   const image = createImageHtml(imageData, imageType);
   const wrappedImage = createDivWrapper(image, classList);
-  const overLay = createImageOverlay(imageData.id, imageType);
-  wrappedImage.insertAdjacentElement("beforeend", overLay);
+  if (imageType === "saved") {
+    const overLay = createImageOverlay(imageData, imageType);
+    wrappedImage.insertAdjacentElement("beforeend", overLay);
+  }
   return wrappedImage;
 };
 
@@ -154,15 +171,17 @@ const createDivWrapper = (element, classList) => {
   return div;
 };
 
-createImageOverlay = (photoId, itemType) => {
+createImageOverlay = (imageData, itemType) => {
+  const {
+    id,
+    user: { name },
+    user: { username },
+  } = imageData;
   const div = document.createElement("div");
   div.classList.add("saved-image-overlay");
-  div.innerHTML = `<a class ="link-button button hidden" href="${baseUrl}${photoId}" target="_blank">View on Unsplash</a>
-  ${
-    itemType === "saved"
-      ? `<span class="remove-button button hidden" data-account="${getEmailFromSelect()}" data-photo-id=${photoId} } ">Remove Image</span>`
-      : ""
-  }`;
+  div.innerHTML = `<span title="See @${name}'s profile on Unsplash"><a href="https://unsplash.com/@${username}"   target="_blank">@${name}</a></span><a class ="link-button button hidden" href="${baseUrl}${id}" target="_blank">View on Unsplash</a>
+<span class="remove-button button hidden" data-account="${getEmailFromSelect()}" data-photo-id=${id} } ">Remove Image</span>`;
+
   return div;
 };
 
@@ -195,6 +214,42 @@ const clearSavedImages = () => {
   if (savedImageContainer.hasChildNodes()) {
     savedImageContainer.innerHTML = "";
   }
+};
+
+// used for showing toast message when image is deleted / saved etc
+
+const showToast = (msg, duration = 3000) => {
+  // create the toast element
+  const toastElement = document.createElement("p");
+  toastElement.innerHTML = msg;
+
+  toastElement.classList.add("toast");
+
+  // function that will adjust the toast's position when the user scrolls
+
+  function scrollToast() {
+    toastElement.style.top = scrollY + 10 + "px";
+  }
+
+  // add it to the dom
+  document.body.appendChild(toastElement);
+
+  requestAnimationFrame(function () {
+    toastElement.style.opacity = "1";
+    toastElement.style.top = scrollY + 10 + "px";
+    window.addEventListener("scroll", scrollToast);
+  });
+
+  // start fading it out 500ms before removing it
+  setTimeout(function () {
+    toastElement.style.opacity = "0";
+  }, duration - 500);
+
+  // remove it after the duration is over
+  setTimeout(function () {
+    document.body.removeChild(toastElement);
+    window.removeEventListener("scroll", scrollToast);
+  }, duration);
 };
 
 /********************/
@@ -360,6 +415,20 @@ const saveImageToAccount = (account, image) => {
   updateAccountInLocalStorage(account);
 };
 
+const removeSavedImage = (e) => {
+  const account = getAccountFromLocalStorage(e.target.dataset.account);
+  const imageId = e.target.dataset.photoId;
+  const index = account.images.findIndex((image) => image.id === imageId);
+  account.images.splice(index, 1);
+  updateAccountInLocalStorage(account);
+  try {
+    e.target.parentNode.parentNode.remove();
+    showToast(msg.imageRemoved);
+  } catch (err) {
+    console.log(err);
+  }
+};
+
 const updateAccountInLocalStorage = (account) => {
   const accounts = getAccountsFromLocalStorage();
   const index = accounts.findIndex((acc) => acc.email === account.email);
@@ -426,8 +495,20 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 savedImageContainer.addEventListener("click", (e) => {
-  console.dir(e.target);
-  if (e.target.classList.contains("pic-wrapper")) {
-    console.log("clicked");
+  if (e.target.classList.contains("remove-button")) {
+    console.log(e.target.parentNode.parentNode);
+    removeSavedImage(e);
+    console.log("image removed");
   }
 });
+
+const addAttribution = (imageData) => {
+  console.log("attribution");
+  const {
+    id,
+    user: { name },
+    user: { username },
+  } = imageData;
+
+  attribution.innerHTML = `<span>Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a> - view on <a href="https://unsplash.com/photos/${id}" target="_blank">Unsplash.`;
+};
