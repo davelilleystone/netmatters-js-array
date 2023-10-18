@@ -1,0 +1,36 @@
+@media screen and (min-width: 400px) {
+  .main-image-container,
+  .attribution,
+  .search-form,
+  .add-email-form {
+    width: 400px;
+  }
+
+  .main-image-container {
+    height: 300px;
+  }
+}
+
+@media screen and (min-width: 768px) {
+  .main-image-container,
+  .attribution,
+  .search-form,
+  .add-email-form {
+    width: 600px;
+  }
+  .main-image-container {
+    height: 400px;
+  }
+}
+
+// @media screen and (min-width: 992px) {
+//   .main-image-container,
+//   .attribution,
+//   .search-form,
+//   .add-email-form {
+//     width: 800px;
+//   }
+//   .main-image-container {
+//     height: 600px;
+//   }
+// }

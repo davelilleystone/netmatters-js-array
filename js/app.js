@@ -2,7 +2,7 @@ const apiUrl = "https://api.unsplash.com/photos/random/?count=1&orientation=land
 const baseUrl = "https://unsplash.com/photos/";
 let currentImageData = {};
 
-const msg = { imageSaved: "Your image has been saved", imageRemoved: "Your image has been removed" };
+const msg = { imageSaved: "Image Saved", imageRemoved: "Image Removed" };
 const attribution = document.querySelector(".attribution");
 const savedImageContainer = document.querySelector(".saved-image-container");
 const mainImageContainer = document.querySelector(".main-image-container");
@@ -14,7 +14,6 @@ const emailSelect = document.querySelector(".email-select");
 
 // turn off browser validation for email input
 
-console.log();
 emailForm.noValidate = true;
 
 /********************/
@@ -32,6 +31,11 @@ const onSearchSubmitHandler = async () => {
     mainImageContainer.removeChild(mainImageContainer.firstChild);
   }
 
+  // remove existing error message from page if it sexists
+  if (checkImageErrorExists()) {
+    mainImageContainer.removeChild(mainImageContainer.firstChild);
+  }
+
   try {
     const [imageData] = await getImageData(url);
     setCurrentImageData(imageData);
@@ -40,7 +44,9 @@ const onSearchSubmitHandler = async () => {
     addAttribution(currentImageData);
   } catch (err) {
     if (err === 404) {
-      console.log(`No images for ${getSearchTerm()} found`);
+      showMainImageError(`No images for ${getSearchTerm()} found :(`);
+    } else if (err === 403) {
+      showMainImageError(`Oh Noes!!! API rate limit exceeded`);
     } else {
       console.log(err);
     }
@@ -57,12 +63,14 @@ onSelectChangeHandler = (e) => {
 // on page load - check if accounts array exists in local storage, if not, create it. Adds any email addresses to select list and loads saved images for first email in list. Displays image in main image container.
 
 onPageLoadHandler = () => {
+  console.log("dom content loaded");
   // check if account array exists in local storage - if not, create it
   if (!localStorage.getItem("accounts")) {
     localStorage.setItem("accounts", JSON.stringify([]));
   }
   // if no accounts exist,  no need to load select list
   if (getAccountsFromLocalStorage().length === 0) {
+    onSearchSubmitHandler();
     return;
   } else {
     const emailAddresses = getEmailAddresses();
@@ -73,21 +81,23 @@ onPageLoadHandler = () => {
 
     loadSavedImages();
   }
-  // fire change event on select so we can show saved images for the first email in the list
-  // fireSelectChangeEvent(emailSelect);
-  //   displayImage(apiUrl, mainImageContainer);
+
+  onSearchSubmitHandler();
 };
 
 // save image to account and add to saved images container on page
 
 onSaveImageHandler = (e) => {
   if (!checkEmailOnSave(emailSelect)) {
-    // searchInput.setCustomValidity("No email selected");
+    emailInput.setCustomValidity("No accounts avaialble - please add an account");
+    emailInput.reportValidity();
     return console.log("No email selected");
+  } else {
+    emailInput.setCustomValidity("");
   }
 
   if (!checkMainImageExists()) {
-    return console.log("No image to save");
+    return showToast("No image to save");
   }
   const account = getAccountFromLocalStorage(getEmailFromSelect());
   const image = getCurrentImageData();
@@ -120,13 +130,13 @@ const createImageHtml = (imageData, type) => {
     urls: { raw },
   } = imageData;
 
-  const regular = raw + "&w=800&h=600&fit=crop";
-  const medium = raw + "&w=600&h=400&fit=crop";
+  const regular = raw + "&w=600&h=400&fit=crop";
+  // const medium = raw + "&w=600&h=400&fit=crop";
   const small = raw + "&w=400&h=300&fit=crop";
   const xs = raw + "&w=300&h=200&fit=crop";
   const image = `<picture>
-  ${type === "new" ? `<source media="(min-width:992px)" srcset="${regular}">` : ""}
-  ${type === "new" ? `<source media="(min-width:768px)" srcset="${medium}">` : ""}
+
+  ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
   ${type === "new" ? `<source media="(min-width:400px)" srcset="${small}">` : ""}
       <img src="${xs}" data-pic-id=${id} alt="${altDescription}">
   </picture>`;
@@ -137,6 +147,9 @@ const createImageHtml = (imageData, type) => {
 
 const addImageToDom = (image, parent) => {
   parent.insertAdjacentElement("afterbegin", image);
+  image.addEventListener("load", (e) => {
+    console.log(e.target);
+  });
 };
 
 // check if main image exists on page
@@ -333,24 +346,33 @@ const addEmailToSelect = (email) => {
 
 // check if email syntax is valid and does not already exist
 const validateEmail = (email) => {
+  emailInput.setCustomValidity("");
   // check if email syntax is valid
   if (!checkEmailIsValid(email)) {
-    console.log("Email is not valid");
+    emailInput.setCustomValidity("Please enter a valid email address");
+    emailInput.reportValidity();
     return false;
+  } else {
+    emailInput.setCustomValidity("");
   }
 
   // check if email exists in local storage
   if (checkEmailExists(email)) {
-    console.log("Email already exists");
+    emailInput.setCustomValidity("That account already exists");
+    emailInput.reportValidity();
     return false;
+  } else {
+    emailInput.setCustomValidity("");
   }
 
   return true;
 };
 
-const addEmail = (email) => {
-  // validate email
+const addEmail = () => {
+  const email = emailInput.value.trim();
+
   if (!validateEmail(email)) {
+    console.log(emailInput.checkValidity());
     console.log("Email is not valid");
     return;
   }
@@ -371,8 +393,15 @@ const addEmail = (email) => {
 
   //  set this email to selected
   setSelected(emailSelect, email);
+
+  // clear email input
+
+  emailInput.value = "";
+
   // fire change event on select
   fireSelectChangeEvent(emailSelect);
+
+  showToast("Account added");
 };
 
 /*********************/
@@ -480,10 +509,9 @@ searchForm.addEventListener("click", (e) => {
 
 emailForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  const email = emailInput.value.trim();
-  addEmail(email);
-  // TODO - clear input field only after email has been added successfully
-  emailInput.value = "";
+  console.log("submit");
+
+  addEmail();
 });
 
 emailSelect.addEventListener("change", (e) => {
@@ -496,9 +524,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 savedImageContainer.addEventListener("click", (e) => {
   if (e.target.classList.contains("remove-button")) {
-    console.log(e.target.parentNode.parentNode);
     removeSavedImage(e);
-    console.log("image removed");
   }
 });
 
@@ -510,5 +536,29 @@ const addAttribution = (imageData) => {
     user: { username },
   } = imageData;
 
-  attribution.innerHTML = `<span>Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a> - view on <a href="https://unsplash.com/photos/${id}" target="_blank">Unsplash.`;
+  attribution.innerHTML = `<span title="View ${name}'s account on Unsplash">Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a></span>
+  <span title="View ${name}'s photo on Unsplash">View photo on <a href="https://unsplash.com/photos/${id}" target="_blank">Unsplash</span>`;
 };
+
+const showMainImageError = (msg) => {
+  const parent = mainImageContainer;
+  const error = createDivWrapper(msg, ["error"]);
+  addImageToDom(error, parent);
+  updateAttributionOnError();
+};
+
+const updateAttributionOnError = () => {
+  attribution.innerHTML = `<span><strong>No Images Found</strong></span>`;
+};
+
+getAccountImageCount = (account) => {
+  return account.images.length;
+};
+
+const checkImageErrorExists = () => {
+  return mainImageContainer.querySelector(".main-image-container > .error") ? true : false;
+};
+
+window.addEventListener("load", (e) => {
+  console.log(e.target);
+});

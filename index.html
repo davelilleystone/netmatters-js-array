@@ -7,29 +7,55 @@
     <link rel="stylesheet" href="./css/style.css" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=roboto&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet" />
 
     <title>Image Generator</title>
   </head>
   <body>
-    <noscript></noscript>
-    <form class="search-form">
-      <input type="text" class="search-input" id="search-input" aria-label="search input field" />
-      <button type="submit" class="search-button" aria-label="">Search Images</button>
-      <button type="button" class="save-button" id="save-button">Save Image</button>
-    </form>
-    <form class="add-email-form">
-      <label for="add-email-input">Add Email</label>
-      <input type="email" class="add-email-input" id="add-email-input" />
-      <button type="submit" class="add-email-button">Add Email</button>
-    </form>
-    <label for="email-select">Select Email</label>
-    <select class="email-select" id="email-select">
-      <option value="default-option" selected disabled>No Email Addresses Available</option>
-    </select>
-    <div class="image-viewer">
-      <div class="main-image-container"></div>
+    <div class="select-wrapper">
+      <select class="email-select" id="email-select">
+        <option value="default-option" selected>No Accounts Available</option>
+      </select>
+    </div>
+
+    <div class="main-image-wrapper">
+      <div class="main-image-container">
+        <div class="loader-container"><span class="loader"></span></div>
+      </div>
+    </div>
+    <div class="attribution-wrapper">
       <div class="attribution"></div>
+    </div>
+
+    <div class="search-form-wrapper">
+      <form class="search-form form">
+        <input
+          type="text"
+          class="search-input"
+          id="search-input"
+          aria-label="search input field"
+          placeholder="Leave blank for random image!"
+        />
+        <div class="search-form-button-wrapper">
+          <button type="submit" class="search-button" aria-label="">Search Images</button>
+          <button type="button" class="save-button" id="save-button">Save Image</button>
+          <button type="reset" class="clear-button" id="clear-button">Clear Search</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="add-email-form-wrapper">
+      <form class="add-email-form form">
+        <div class="add-email-intro"><strong>No account?</strong> Add your email below to create one!</div>
+        <div class="email-input-wrapper">
+          <input type="email" class="add-email-input" id="add-email-input" />
+          <button type="submit" class="add-email-button">Add Account</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="saved-images-info">
+      <h2>Saved Images</h2>
     </div>
     <div class="saved-image-wrapper">
       <div class="saved-image-container"></div>
