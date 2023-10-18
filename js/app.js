@@ -11,6 +11,8 @@ const searchForm = document.querySelector(".search-form");
 const emailForm = document.querySelector(".add-email-form");
 const emailInput = document.querySelector(".add-email-input");
 const emailSelect = document.querySelector(".email-select");
+const loader = document.querySelector(".loader-container");
+const savedImagesHeading = document.querySelector(".saved-images-info > h2");
 
 // turn off browser validation for email input
 
@@ -23,6 +25,8 @@ emailForm.noValidate = true;
 // get image data from unsplash api and display on page
 
 const onSearchSubmitHandler = async () => {
+  console.log(currentImageData);
+
   const parent = mainImageContainer;
   const url = createSearchUrl();
 
@@ -41,6 +45,17 @@ const onSearchSubmitHandler = async () => {
     setCurrentImageData(imageData);
     const image = createImage(imageData, ["pic-wrapper"], "new");
     addImageToDom(image, parent);
+    requestAnimationFrame(function () {
+      console.log("spinner");
+      const img = document.querySelector(".main-image-container img");
+      loader.classList.add("loading");
+      if (img.complete) {
+        loader.classList.remove("loading");
+      } else {
+        img.addEventListener("load", () => loader.classList.remove("loading"));
+        img.addEventListener("error", function () {});
+      }
+    });
     addAttribution(currentImageData);
   } catch (err) {
     if (err === 404) {
@@ -58,6 +73,7 @@ const onSearchSubmitHandler = async () => {
 onSelectChangeHandler = (e) => {
   clearSavedImages();
   loadSavedImages();
+  updateSavedImagesHeading();
 };
 
 // on page load - check if accounts array exists in local storage, if not, create it. Adds any email addresses to select list and loads saved images for first email in list. Displays image in main image container.
@@ -83,6 +99,7 @@ onPageLoadHandler = () => {
   }
 
   onSearchSubmitHandler();
+  updateSavedImagesHeading();
 };
 
 // save image to account and add to saved images container on page
@@ -113,7 +130,7 @@ onSaveImageHandler = (e) => {
   } catch (err) {
     console.log(err);
   }
-
+  updateSavedImagesHeading();
   onSearchSubmitHandler();
 };
 
@@ -130,16 +147,13 @@ const createImageHtml = (imageData, type) => {
     urls: { raw },
   } = imageData;
 
+  console.log(type);
+
   const regular = raw + "&w=600&h=400&fit=crop";
   // const medium = raw + "&w=600&h=400&fit=crop";
   const small = raw + "&w=400&h=300&fit=crop";
   const xs = raw + "&w=300&h=200&fit=crop";
-  const image = `<picture>
-
-  ${type === "new" ? `<source media="(min-width:768px)" srcset="${regular}">` : ""}
-  ${type === "new" ? `<source media="(min-width:400px)" srcset="${small}">` : ""}
-      <img src="${xs}" data-pic-id=${id} alt="${altDescription}">
-  </picture>`;
+  const image = `<img src="${type === "new" ? regular : xs}" data-pic-id=${id} alt="${altDescription} ">`;
   return image;
 };
 
@@ -147,9 +161,6 @@ const createImageHtml = (imageData, type) => {
 
 const addImageToDom = (image, parent) => {
   parent.insertAdjacentElement("afterbegin", image);
-  image.addEventListener("load", (e) => {
-    console.log(e.target);
-  });
 };
 
 // check if main image exists on page
@@ -189,11 +200,14 @@ createImageOverlay = (imageData, itemType) => {
     id,
     user: { name },
     user: { username },
+    user: {
+      profile_image: { small: profileImage },
+    },
   } = imageData;
   const div = document.createElement("div");
   div.classList.add("saved-image-overlay");
-  div.innerHTML = `<span title="See @${name}'s profile on Unsplash"><a href="https://unsplash.com/@${username}"   target="_blank">@${name}</a></span><a class ="link-button button hidden" href="${baseUrl}${id}" target="_blank">View on Unsplash</a>
-<span class="remove-button button hidden" data-account="${getEmailFromSelect()}" data-photo-id=${id} } ">Remove Image</span>`;
+  div.innerHTML = `<div class='account-link-container'><img src="${profileImage}" alt="profile pic"/><span id= "account-link" title="See @${name}'s profile on Unsplash"><a href="https://unsplash.com/@${username}"   target="_blank">@${name}</a></span></div><a id ="link-button" class ="button hidden" href="${baseUrl}${id}" target="_blank">View on Unsplash</a>
+<span id="remove-button" class = "button hidden" data-account="${getEmailFromSelect()}" data-photo-id=${id} } ">Remove Image</span>`;
 
   return div;
 };
@@ -523,8 +537,11 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 savedImageContainer.addEventListener("click", (e) => {
-  if (e.target.classList.contains("remove-button")) {
+  console.log(e.target.id);
+
+  if (e.target.id === "remove-button") {
     removeSavedImage(e);
+    updateSavedImagesHeading();
   }
 });
 
@@ -562,3 +579,23 @@ const checkImageErrorExists = () => {
 window.addEventListener("load", (e) => {
   console.log(e.target);
 });
+
+updateSavedImagesHeading = () => {
+  const account = getAccountFromLocalStorage(getEmailFromSelect());
+  const count = getAccountImageCount(account);
+  if (count === 0) {
+    hideSavedImagesContainer();
+    savedImagesHeading.textContent = `No saved images for ${getEmailFromSelect()}`;
+    return;
+  }
+  showSavedImagesContainer();
+  savedImagesHeading.textContent = `${count} saved image${count > 1 ? "s" : ""} for ${getEmailFromSelect()}`;
+};
+
+hideSavedImagesContainer = () => {
+  savedImageContainer.classList.add("hidden");
+};
+
+showSavedImagesContainer = () => {
+  savedImageContainer.classList.remove("hidden");
+};
