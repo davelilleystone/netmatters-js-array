@@ -45,7 +45,7 @@ const onSearchSubmitHandler = async () => {
     addImageToDom(image, parent);
     requestAnimationFrame(function () {
       const img = document.querySelector(".main-image-container img");
-      loader.classList.add("loading");
+
       if (img.complete) {
         loader.classList.remove("loading");
       } else {
@@ -583,6 +583,7 @@ const getData = async (url) => {
 // return image data as json
 const getImageData = async (url) => {
   try {
+    loader.classList.add("loading");
     return await getData(url);
   } catch (err) {
     return Promise.reject(err);
