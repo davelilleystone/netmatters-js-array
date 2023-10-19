@@ -25,8 +25,6 @@ emailForm.noValidate = true;
 // get image data from unsplash api and display on page
 
 const onSearchSubmitHandler = async () => {
-  console.log(currentImageData);
-
   const parent = mainImageContainer;
   const url = createSearchUrl();
 
@@ -35,7 +33,7 @@ const onSearchSubmitHandler = async () => {
     mainImageContainer.removeChild(mainImageContainer.firstChild);
   }
 
-  // remove existing error message from page if it sexists
+  // remove existing error message from page if it exists
   if (checkImageErrorExists()) {
     mainImageContainer.removeChild(mainImageContainer.firstChild);
   }
@@ -46,7 +44,6 @@ const onSearchSubmitHandler = async () => {
     const image = createImage(imageData, ["pic-wrapper"], "new");
     addImageToDom(image, parent);
     requestAnimationFrame(function () {
-      console.log("spinner");
       const img = document.querySelector(".main-image-container img");
       loader.classList.add("loading");
       if (img.complete) {
@@ -63,7 +60,7 @@ const onSearchSubmitHandler = async () => {
     } else if (err === 403) {
       showMainImageError(`Oh Noes!!! API rate limit exceeded`);
     } else {
-      console.log(err);
+      showMainImageError(`An unknown error occurred`);
     }
   }
 };
@@ -79,13 +76,13 @@ onSelectChangeHandler = (e) => {
 // on page load - check if accounts array exists in local storage, if not, create it. Adds any email addresses to select list and loads saved images for first email in list. Displays image in main image container.
 
 onPageLoadHandler = () => {
-  console.log("dom content loaded");
   // check if account array exists in local storage - if not, create it
   if (!localStorage.getItem("accounts")) {
     localStorage.setItem("accounts", JSON.stringify([]));
   }
   // if no accounts exist,  no need to load select list
   if (getAccountsFromLocalStorage().length === 0) {
+    updateSavedImagesHeading();
     onSearchSubmitHandler();
     return;
   } else {
@@ -106,21 +103,23 @@ onPageLoadHandler = () => {
 
 onSaveImageHandler = (e) => {
   if (!checkEmailOnSave(emailSelect)) {
-    emailInput.setCustomValidity("No accounts avaialble - please add an account");
+    emailInput.setCustomValidity("No accounts available - please add an account");
     emailInput.reportValidity();
-    return console.log("No email selected");
   } else {
     emailInput.setCustomValidity("");
   }
 
   if (!checkMainImageExists()) {
-    return showToast("No image to save");
+    if (getAccountsTotal() > 0) {
+      return showToast("No image to save");
+    }
   }
+
   const account = getAccountFromLocalStorage(getEmailFromSelect());
   const image = getCurrentImageData();
 
   if (checkImageIsSaved(image, account)) {
-    return console.log("Image already saved");
+    return showToast("Image already saved");
   }
   saveImageToAccount(account, image);
   const savedImage = createImage(currentImageData, ["pic-wrapper", "saved-image"], "saved");
@@ -128,7 +127,7 @@ onSaveImageHandler = (e) => {
     addImageToDom(savedImage, savedImageContainer);
     showToast(msg.imageSaved);
   } catch (err) {
-    console.log(err);
+    showMainImageError("An error occurred when saving your image- please try again");
   }
   updateSavedImagesHeading();
   onSearchSubmitHandler();
@@ -138,6 +137,69 @@ onSaveImageHandler = (e) => {
 /* Helper functions */
 /********************/
 
+// add attribution to page - links to photographer and unsplash page for image
+
+const addAttribution = (imageData) => {
+  const {
+    id,
+    user: { name },
+    user: { username },
+  } = imageData;
+
+  attribution.innerHTML = `<span title="View ${name}'s account on Unsplash">Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a></span>
+  <span title="View ${name}'s photo on Unsplash">View photo on <a href="https://unsplash.com/photos/${id}" target="_blank">Unsplash</span>`;
+};
+
+const showMainImageError = (msg) => {
+  const parent = mainImageContainer;
+  const error = createDivWrapper(msg, ["error"]);
+  addImageToDom(error, parent);
+  updateAttributionOnError();
+};
+
+// update attribution when no images found
+
+const updateAttributionOnError = () => {
+  attribution.innerHTML = `<span><strong>No Images Found</strong></span>`;
+};
+
+// check if error message exists on page - stops user from saving error message to account
+const checkImageErrorExists = () => {
+  return mainImageContainer.querySelector(".main-image-container > .error") ? true : false;
+};
+
+// update saved images heading - used when accounts are added / removed or saved images are added / removed
+updateSavedImagesHeading = () => {
+  const account = getAccountFromLocalStorage(getEmailFromSelect());
+
+  // if no account exists, hide saved images container and return
+  if (!account) {
+    hideSavedImagesContainer();
+    savedImagesHeading.textContent = `No accounts found - no saved images to display`;
+    return;
+  }
+
+  const count = getAccountImageCount(account);
+
+  if (count === 0) {
+    hideSavedImagesContainer();
+    savedImagesHeading.textContent = `No saved images for ${getEmailFromSelect()}`;
+    return;
+  }
+  showSavedImagesContainer();
+  savedImagesHeading.textContent = `${count} saved image${count > 1 ? "s" : ""} for ${getEmailFromSelect()}`;
+};
+
+// hide saved images container - used when no accounts exist or no saved images exist for selected account
+hideSavedImagesContainer = () => {
+  savedImageContainer.classList.add("hidden");
+};
+
+// show saved images container - used when accounts exist and saved images exist for selected account
+showSavedImagesContainer = () => {
+  savedImageContainer.classList.remove("hidden");
+};
+
 // create image html - type is either new or saved. New images are displayed in main image container, saved images are displayed in saved images container and are smaller in size.
 
 const createImageHtml = (imageData, type) => {
@@ -146,8 +208,6 @@ const createImageHtml = (imageData, type) => {
     alt_description: altDescription,
     urls: { raw },
   } = imageData;
-
-  console.log(type);
 
   const regular = raw + "&w=600&h=400&fit=crop";
   // const medium = raw + "&w=600&h=400&fit=crop";
@@ -178,6 +238,7 @@ const setCurrentImageData = (imageData) => {
   currentImageData = imageData;
 };
 
+// create image - imageData is the image data returned from the api, classList is an array of classes to add to the image, imageType is either new or saved
 const createImage = (imageData, classList, imageType) => {
   const image = createImageHtml(imageData, imageType);
   const wrappedImage = createDivWrapper(image, classList);
@@ -188,6 +249,7 @@ const createImage = (imageData, classList, imageType) => {
   return wrappedImage;
 };
 
+// wraps a div around an element and adds classes to it
 const createDivWrapper = (element, classList) => {
   const div = document.createElement("div");
   div.classList.add(...classList);
@@ -195,6 +257,7 @@ const createDivWrapper = (element, classList) => {
   return div;
 };
 
+// create image overlay for saved images
 createImageOverlay = (imageData, itemType) => {
   const {
     id,
@@ -212,6 +275,7 @@ createImageOverlay = (imageData, itemType) => {
   return div;
 };
 
+// create search url for api call
 const createSearchUrl = () => {
   const searchTerm = searchInput.value.trim();
   return (url = searchTerm != "" ? `${apiUrl}&query=${encodeURIComponent(searchTerm)}` : apiUrl);
@@ -253,12 +317,15 @@ const showToast = (msg, duration = 3000) => {
   toastElement.classList.add("toast");
 
   // function that will adjust the toast's position when the user scrolls
+  // only really done for experimental purposes, not that useful in practice
 
   function scrollToast() {
-    toastElement.style.top = scrollY + 10 + "px";
+    if (scrollY % 2 === 0) {
+      toastElement.style.top = scrollY + 10 + "px";
+    }
   }
 
-  // add it to the dom
+  // add toast element to the dom
   document.body.appendChild(toastElement);
 
   requestAnimationFrame(function () {
@@ -287,6 +354,7 @@ const showToast = (msg, duration = 3000) => {
 added to select list on page load, this event is fired so that 
 we can call the handler that loads a users stored images */
 
+// fire change event on select list - only needed when adding emails
 const fireSelectChangeEvent = (select) => {
   select.dispatchEvent(new Event("change"));
 };
@@ -386,8 +454,6 @@ const addEmail = () => {
   const email = emailInput.value.trim();
 
   if (!validateEmail(email)) {
-    console.log(emailInput.checkValidity());
-    console.log("Email is not valid");
     return;
   }
 
@@ -422,6 +488,12 @@ const addEmail = () => {
 /* Account Functions */
 /*********************/
 
+// get total number of accounts in local storage
+const getAccountsTotal = () => {
+  const accounts = getAccountsFromLocalStorage();
+  return accounts.length;
+};
+
 // add account to local storage
 const addAccountToLocalStorage = (account) => {
   const accounts = getAccountsFromLocalStorage();
@@ -437,6 +509,13 @@ const checkImageIsSaved = (image, account) => {
   return false;
 };
 
+// get image count for account
+
+getAccountImageCount = (account) => {
+  return account.images.length;
+};
+
+// create account object
 const createAccount = (email) => {
   return { email: email.toLowerCase(), images: [] };
 };
@@ -453,11 +532,14 @@ const getAccountsFromLocalStorage = () => {
   return accounts;
 };
 
+// save image to local storage account
+
 const saveImageToAccount = (account, image) => {
   account.images.push(image);
   updateAccountInLocalStorage(account);
 };
 
+// remove image from local storage account and remove from saved images container
 const removeSavedImage = (e) => {
   const account = getAccountFromLocalStorage(e.target.dataset.account);
   const imageId = e.target.dataset.photoId;
@@ -468,10 +550,11 @@ const removeSavedImage = (e) => {
     e.target.parentNode.parentNode.remove();
     showToast(msg.imageRemoved);
   } catch (err) {
-    console.log(err);
+    showMainImageError("An error occurred when removing your image- please try again");
   }
 };
 
+// update account in local storage
 const updateAccountInLocalStorage = (account) => {
   const accounts = getAccountsFromLocalStorage();
   const index = accounts.findIndex((acc) => acc.email === account.email);
@@ -483,7 +566,8 @@ const updateAccountInLocalStorage = (account) => {
 /* APi Retrieval */
 /*****************/
 
-const getJson = async (url) => {
+// get data from api
+const getData = async (url) => {
   const response = await fetch(url, {
     method: "GET",
     headers: {
@@ -496,9 +580,10 @@ const getJson = async (url) => {
   return await response.json();
 };
 
+// return image data as json
 const getImageData = async (url) => {
   try {
-    return await getJson(url);
+    return await getData(url);
   } catch (err) {
     return Promise.reject(err);
   }
@@ -511,8 +596,6 @@ const getImageData = async (url) => {
 searchForm.addEventListener("submit", (e) => {
   e.preventDefault();
   onSearchSubmitHandler();
-
-  //   searchInput.value = "";
 });
 
 searchForm.addEventListener("click", (e) => {
@@ -523,7 +606,6 @@ searchForm.addEventListener("click", (e) => {
 
 emailForm.addEventListener("submit", (e) => {
   e.preventDefault();
-  console.log("submit");
 
   addEmail();
 });
@@ -537,65 +619,8 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 
 savedImageContainer.addEventListener("click", (e) => {
-  console.log(e.target.id);
-
   if (e.target.id === "remove-button") {
     removeSavedImage(e);
     updateSavedImagesHeading();
   }
 });
-
-const addAttribution = (imageData) => {
-  console.log("attribution");
-  const {
-    id,
-    user: { name },
-    user: { username },
-  } = imageData;
-
-  attribution.innerHTML = `<span title="View ${name}'s account on Unsplash">Photo by <a href="https://unsplash.com/@${username}" target="_blank">${name}</a></span>
-  <span title="View ${name}'s photo on Unsplash">View photo on <a href="https://unsplash.com/photos/${id}" target="_blank">Unsplash</span>`;
-};
-
-const showMainImageError = (msg) => {
-  const parent = mainImageContainer;
-  const error = createDivWrapper(msg, ["error"]);
-  addImageToDom(error, parent);
-  updateAttributionOnError();
-};
-
-const updateAttributionOnError = () => {
-  attribution.innerHTML = `<span><strong>No Images Found</strong></span>`;
-};
-
-getAccountImageCount = (account) => {
-  return account.images.length;
-};
-
-const checkImageErrorExists = () => {
-  return mainImageContainer.querySelector(".main-image-container > .error") ? true : false;
-};
-
-window.addEventListener("load", (e) => {
-  console.log(e.target);
-});
-
-updateSavedImagesHeading = () => {
-  const account = getAccountFromLocalStorage(getEmailFromSelect());
-  const count = getAccountImageCount(account);
-  if (count === 0) {
-    hideSavedImagesContainer();
-    savedImagesHeading.textContent = `No saved images for ${getEmailFromSelect()}`;
-    return;
-  }
-  showSavedImagesContainer();
-  savedImagesHeading.textContent = `${count} saved image${count > 1 ? "s" : ""} for ${getEmailFromSelect()}`;
-};
-
-hideSavedImagesContainer = () => {
-  savedImageContainer.classList.add("hidden");
-};
-
-showSavedImagesContainer = () => {
-  savedImageContainer.classList.remove("hidden");
-};
