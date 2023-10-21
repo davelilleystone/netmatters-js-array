@@ -55,6 +55,7 @@ const onSearchSubmitHandler = async () => {
     });
     addAttribution(currentImageData);
   } catch (err) {
+    loader.classList.remove("loading");
     if (err === 404) {
       showMainImageError(`No images for ${getSearchTerm()} found :(`);
     } else if (err === 403) {
